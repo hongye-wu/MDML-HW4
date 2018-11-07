@@ -1,4 +1,5 @@
 require(tidyverse)
+require(lubridate)
 
 ## FUNCTIONS TO GET THE XML PARSED HTML FROM SITE
 get_site_content <- function( url ){
@@ -26,6 +27,11 @@ neighborhoods <- c('allston', 'back-bay', 'beacon-hill','brighton','charlestown'
                    'jamaica-plain','mattapan','mission-hill','north-end',
                    'roslindale','roxbury','south-boston','south-end','west-roxbury')
 
+## Function to get rid of leading '\n' and trailing white spaces
+clean_text <- function(text) {
+  gsub("^[\n]|[ \t]+$","",text)
+}
+
 ## Extract Type/Hour/Neighborhood Functions
 extract_table_rows <- function( parsed_html ){
   require( rvest )
@@ -51,8 +57,10 @@ extract_date_from_tr <- function( tr ){
   date_text_el <- rvest::html_nodes( x = tr, xpath = './/td[contains(@class,"field-crime-date")]' )
   # extract the text from the cell
   date_text <- rvest::html_text( date_text_el )
+  # convert to mdy_hm
+  date_mdy_hm <- lubridate::mdy_hm(date_text)
   # return
-  date_text
+  date_mdy_hm
 }
 
 extract_neighborhood_from_tr <- function( tr ){
@@ -65,6 +73,8 @@ extract_neighborhood_from_tr <- function( tr ){
   neighborhood_text
 }
 
+gsub("^[\n]|[ \t]+$","",all_crimes[1,3])
+
 # Tibble
 all_crimes <- NULL
 for(neighborhood in neighborhoods){
@@ -74,6 +84,10 @@ for(neighborhood in neighborhoods){
     extract_table_rows() %>%
     tibble(Date = extract_date_from_tr(.), 
            Crime_Type = extract_type_from_tr(.), 
-           Neighborhood = extract_neighborhood_from_tr(.))
+           Neighborhood = extract_neighborhood_from_tr(.)) %>%
+    mutate(Hour = lubridate::hour(Date))
   all_crimes <- bind_rows(all_crimes,neighborhood_crimes)
 }
+
+#What are the five most common crime types (aggregated across neighborhoods and hours), 
+#and how many of each such crime occurred? Be alert for misspellings!
