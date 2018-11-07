@@ -1,93 +1,74 @@
-require(tidyverse)
-require(lubridate)
+source("./crime_library.R")
+require(ggplot2)
 
-## FUNCTIONS TO GET THE XML PARSED HTML FROM SITE
-get_site_content <- function( url ){
-  require( httr )
-  # get the site response
-  response <- httr::GET( url )
-  # extract the content
-  content <- httr::content( x = response, as = 'text', encoding = 'utf-8' )
-  # return 
-  return( content )
-}
+## What are the five most common crime types (aggregated across neighborhoods and hours), 
+## and how many of each such crime occurred? Be alert for misspellings!
+Most_Common_Types <- all_crimes %>%
+  group_by(Crime_Type) %>%
+  summarise(Crime_Type_Num = n()) %>%
+  arrange(desc(Crime_Type_Num)) %>%
+  slice(1:5)
 
-content_to_parsed_html <- function( content ){
-  require( xml2 )
-  # parse the html with xml2
-  parsed_html <- xml2::read_html( content )
-  # return
-  return( parsed_html )
-}
+Most_Common_Types
 
-## Get stuff
-url <- 'https://www.universalhub.com/crime/'
-neighborhoods <- c('allston', 'back-bay', 'beacon-hill','brighton','charlestown',
-                   'chinatown','dorchester','downtown','east-boston','fenway','hyde-park',
-                   'jamaica-plain','mattapan','mission-hill','north-end',
-                   'roslindale','roxbury','south-boston','south-end','west-roxbury')
+## Make a plot of the total number of crimes (aggregated across neighborhoods and
+## crime types) by hour. Write a few sentences about the pattern you observe.
+theme_set(theme_bw())
 
-## Function to get rid of leading '\n' and trailing white spaces
-clean_text <- function(text) {
-  gsub("^[\n]|[ \t]+$","",text)
-}
+p <- ggplot(data = all_crimes)
+p + 
+  geom_bar(aes(x=factor(Hour))) +
+  xlab("Hour of Day") +
+  ylab("Crime Count (Aggregated across neighborhoods and crime types)")
 
-## Extract Type/Hour/Neighborhood Functions
-extract_table_rows <- function( parsed_html ){
-  require( rvest )
-  # extract the tbody element(s)
-  trs <- rvest::html_nodes( x = parsed_html, xpath = '//tbody/tr' )
-  # return 
-  trs
-}
 
-extract_type_from_tr <- function( tr ){
-  require( rvest )
-  # extract the cell element from the table entry
-  type_name_el <- rvest::html_nodes( x = tr, xpath = './/td[contains(@class,"field-name")]' )
-  # extract the text from the cell
-  type_name <- rvest::html_text( type_name_el )
-  # return
-  type_name
-}
+## Restrict to the five most common crime types, and plot the total number of crimes
+## (aggregated across neighborhoods) for each crime type by hour (i.e., your plot should
+## have five lines). Write a few sentences about the pattern you observe.
 
-extract_date_from_tr <- function( tr ){
-  require( rvest )
-  # extract the cell element from the table entry
-  date_text_el <- rvest::html_nodes( x = tr, xpath = './/td[contains(@class,"field-crime-date")]' )
-  # extract the text from the cell
-  date_text <- rvest::html_text( date_text_el )
-  # convert to mdy_hm
-  date_mdy_hm <- lubridate::mdy_hm(date_text)
-  # return
-  date_mdy_hm
-}
+# Stacked Bar Plot (I think looks better)
+q <- ggplot(data = all_crimes %>%
+              filter(Crime_Type %in% Most_Common_Types$Crime_Type))
+q + 
+  geom_bar(aes(x=factor(Hour), fill = Crime_Type)) +
+  xlab("Hour of Day") +
+  ylab("Crime Count (Aggregated across neighborhoods)")
 
-extract_neighborhood_from_tr <- function( tr ){
-  require( rvest )
-  # extract the cell element from the table entry
-  neighborhood_text_el <- rvest::html_nodes( x = tr, xpath = './/td[contains(@class,"field-street")]' )
-  # extract the text from the cell
-  neighborhood_text <- rvest::html_text( neighborhood_text_el )
-  # return
-  neighborhood_text
-}
+# Line Plot
+q <- ggplot(data = all_crimes %>%
+              filter(Crime_Type %in% Most_Common_Types$Crime_Type) %>%
+              group_by(Hour,Crime_Type) %>%
+              summarise(Crime_Count = n()))
 
-gsub("^[\n]|[ \t]+$","",all_crimes[1,3])
+q +
+  geom_line(aes(x = Hour, y = Crime_Count, color = Crime_Type)) +
+  xlab("Hour of Day") +
+  ylab("Crime Count (Aggregated across neighborhoods)")
 
-# Tibble
-all_crimes <- NULL
-for(neighborhood in neighborhoods){
-  testurl <- paste0(url,neighborhood,".html")
-  neighborhood_crimes <- get_site_content(testurl) %>% 
-    content_to_parsed_html() %>%
-    extract_table_rows() %>%
-    tibble(Date = extract_date_from_tr(.), 
-           Crime_Type = extract_type_from_tr(.), 
-           Neighborhood = extract_neighborhood_from_tr(.)) %>%
-    mutate(Hour = lubridate::hour(Date))
-  all_crimes <- bind_rows(all_crimes,neighborhood_crimes)
-}
 
-#What are the five most common crime types (aggregated across neighborhoods and hours), 
-#and how many of each such crime occurred? Be alert for misspellings!
+## Restrict to just the neighborhoods of Dorchester and Downtown, and plot the total
+## number of crimes (aggregated across crime types (include all crime types, not just the
+## top five)) for each of the two neighborhoods by hour (i.e., your plot should have two
+## lines). Write a few sentences about the pattern you observe.
+
+# Stacked Bar Plot (I think looks better)
+g <- ggplot(data = all_crimes %>%
+              filter(Neighborhood %in% c("dorchester","downtown")))
+
+g +
+  geom_bar(aes(x=factor(Hour), fill = Neighborhood)) +
+  xlab("Hour of Day") +
+  ylab("Crime Count (Aggregated across crime types)")
+
+# Line Plot
+g <- ggplot(data = all_crimes %>%
+              filter(Neighborhood %in% c("dorchester","downtown")) %>%
+              group_by(Hour, Neighborhood) %>%
+              summarise(Crime_Count = n()))
+
+g +
+  geom_line(aes(x = Hour, y = Crime_Count,color = Neighborhood)) +
+  xlab("Hour of Day") +
+  ylab("Crime Count (Aggregated across crime types)")
+
+
