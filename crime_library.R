@@ -118,14 +118,18 @@ all_crimes <- bind_rows(all_crimes,neighborhood_crimes)
 
 ## Cleaning Crime Types
 # See all the categories
-table(all_crimes$Crime_Type)
+unique(all_crimes$Crime_Type)
 
-# There are 5 different spellings of "shooting". combine them:
-shoot.idx <- which(all_crimes$Crime_Type %in% c("shooting","Shootin","Shoting","Shotting"))
+# There are 6 different spellings of "shooting". combine them:
+shoot.idx <- which(all_crimes$Crime_Type %in% c("shooting","Shootin","Shoting","Shotting", " Shooting"))
 all_crimes$Crime_Type[shoot.idx] <- "Shooting"
 
 # One instance of misspelled "Assault"
 assaul.idx <- which(all_crimes$Crime_Type == "Assaul")
 all_crimes$Crime_Type[assaul.idx] <- "Assault"
 
-# And I give up. Too many single instances of possible things that could in the same category
+# 6 instances without crime type
+all_crimes$Crime_Type[all_crimes$Crime_Type == ""] <- "NA"
+
+# 1 with an extra space in the name
+all_crimes$Crime_Type[all_crimes$Crime_Type == " Illegal gun possession"] <- "Illegal gun possession"
