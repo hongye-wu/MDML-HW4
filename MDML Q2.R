@@ -124,3 +124,17 @@ tail(coeff)
 # from the ninth circuit
 
 # C)
+bigram_data <-appeals.data %>% unnest_tokens(word, text, token = "ngrams", n =2)
+# remove bigrams that contain stop words
+stop_words <- stop_words %>% 
+  select(-lexicon) %>% 
+  pull(word)
+
+bigram_clean <- bigram_data %>% 
+  select(-on())
+
+#10 most common words are :
+text_appeals.data %>% count(word) %>% arrange(desc(n)) %>% slice(1:10)
+
+#10 most common words by circuit are:
+text_appeals.data %>% group_by (circuit) %>% count(word) %>% arrange(desc(n)) %>% slice(1:10)
