@@ -17,7 +17,7 @@ appeals.data$opinion_id <-  seq.int(nrow(appeals.data))
 data(stop_words)
 
 #Reading in custom_words.txt:
-custom_words<- read.delim("custom_words.txt", header=F)
+custom_words<- read.delim("custom_words.txt", header=F, encoding="UTF-8")
 
 #Renaming column:
 colnames(custom_words)<-"word"
